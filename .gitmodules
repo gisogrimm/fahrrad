@@ -1,0 +1,3 @@
+[submodule "tascar"]
+	path = tascar
+	url = https://github.com/gisogrimm/tascar
