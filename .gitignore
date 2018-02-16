@@ -38,3 +38,5 @@
 build
 doc/html
 doc/latex
+
+wifiaccessdata.h
