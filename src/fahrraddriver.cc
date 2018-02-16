@@ -24,8 +24,8 @@
 
 */
 
-#define OSC_ADDR "239.255.1.7"
-#define OSC_PORT "6978"
+#define OSC_ADDR ""
+#define OSC_PORT "9877"
 
 #include "osc_helper.h"
 #include <SerialStream.h>
@@ -37,7 +37,7 @@ public:
   void run();
 private:
   int32_t rot;
-  int32_t vel;
+  double vel;
 };
 
 drv_t::drv_t(const std::string& ttydev)
@@ -47,9 +47,10 @@ drv_t::drv_t(const std::string& ttydev)
     vel(0)
 {
   Open(BAUD_9600,CHAR_SIZE_8,PARITY_NONE,STOP_BITS_1,FLOW_CONTROL_NONE);
-  set_prefix("/cycledrv");
+  //set_prefix("/cycledrv");
   add_int("/rot",&rot);
-  add_int("/vel",&vel);
+  add_double("/vel",&vel);
+  add_double("/ESP_F09222/antrieb",&vel);
   activate();
 }
 
@@ -64,7 +65,8 @@ void drv_t::run()
   sleep(3);
   while(true){
     char ctmp[1024];
-    sprintf(ctmp,"%d %d\n",rot,std::max(std::min(vel,255),-255));
+    sprintf(ctmp,"%d %d\n",rot,(int)(std::max(std::min(vel,255.0),-255.0)));
+    printf("%s %g",ctmp,vel);
     Write(std::string(ctmp));
     usleep(100000);
   }
