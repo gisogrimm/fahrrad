@@ -1,0 +1,55 @@
+-*- org-mode -*-
+
+Drittes Projekttreffen
+
+* Trainingsfahrrad:
+** Schwierigkeitsgrad (Treten)
+*** Mechanische Einstellung.
+Vermutlich Wirbelstrombremse.
+Zustand der Einstellung kann über ein Potentiometer ausgelesen werden, dass
+Mechanisch mit der Einstellung verbunden ist. Spannungsteiler, Spannungsmessung.
+** Trittfrequenz
+*** Ein Kontakt schließt mehrmals pro Umdrehung.
+** Pulsmessung
+*** Ohrclip mit Infrarot-Diode und Fotowiderstand
+Mehrer Impulse pro Tretkurbelumdrehung
+** Hacking:
+*** Ein Wemos D1 Mini misst und sendet als OSC messages
+**** Zustand des Potentiometer (Schwierigkeit) über Analogeingang
+**** Trittfrequenz über Digitaleingang, Zeitmessung zwischen den Aktivierungen
+*** Ein Weiterer Wemos D1 Mini misst uns sendet als OSC messages
+**** Spannung des Pulsmesser-Ausgangs über Analogeingang
+
+* Musik
+** Eher keine Sound Samples abspielen
+** Eher Aufnahme von live generierten Sounds und Verarbeitung.
+*** Motoren besorgen
+Vielleicht Schrittmotoren für exakte Drehzalvorgabe.
+*** Fahrradteile, die Geräusche machen, besorgen
+*** Zusammenbauen zu steuerbaren Geräuschgeneratoren, Mikrophone
+** Sensoren senden Werte
+** Kompositionsprogramm empfängt Wahrscheinlichkeitsvektoren / Tabellen für
+*** Sound Events an verschiedenen Taktpositionen
+*** Länge von Sound Events an diesen Taktpositionen
+*** Harmoniemodell (Harmoniewechsel, Stufenwahrscheinlichkeiten)
+Mir fällt gerade auf, dass wir eine Übersetzungsstation benötigen, die
+Sensorwerte sammelt, kombiniert, und in Wahrscheinlichtkeitstabellen
+umrechnet.
+** Autotune für Speichen?
+*** Fons hat sowas wie Autotune veröffentlicht
+** Noten aus Kompositionsprogramm + Eingangs-Geräusche
+*** Verarbeitet zu Ausgabegeräuschen aus den Lautsprechern.
+*** Scheinwerfer beleuchten aktive Quelle(n).
+** HOS-Toolbox: HOS-Composer. harmony_model_t.
+*** Harmony_model anschauen, verstehen was es machen kann, beschreiben.
+*** Giso kann dann Beschreibung verbessern.
+** Perkussions-Instrumente:
+*** Klingel, 
+*** Seitenständer, 
+*** Gepäckträger,
+*** Schaltgeräusche
+** Noteninstrumente: gefiltert:
+*** Freilauf von Kettenschaltung,
+*** Freilauf von 3-Gang-Schaltung,
+*** Reifenabrollgeräusch (vielleicht nicht machbar live)
+*** Kettenzwitschern -> Fahrrad
