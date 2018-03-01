@@ -78,8 +78,8 @@ occur.
 The time signature describes the length of bars (measures) and their
 division into beats.  A waltz would have a 3/4 time signature.
 **** double time
-Not sure. Maybe this is the time of the current beat in seconds since
-the Unix Epoch.
+The composer steps through time in steps of time_increment.  What unit
+of time the composer uses is not clear. It is not seconds.
 **** pmf_t ptimesig
 We can also have time signature changes. This model describes them.
 **** pmf_t ptimesigbars
@@ -240,3 +240,34 @@ a change of pitch can occur. beat elements have attributes "v" and
 the beat in the measure where pitch changes can occur. Non-integer
 indices are possible.  "p" contains the probability of a pitch change
 at that beat.
+
+* The OSC messages sent by the composer
+The composer sends frequent updates of its time, every time_increment:
+
+/time f (time)
+
+The floating point value is the current time in undefined units.
+
+
+Less often, the composer sends notes. Example:
+
+/note iiif 0 14 7 1315.5
+/note iiif 1 -2 6 1315.5
+/note iiif 2 2 5 1315.5
+/note iiif 4 -10 4 1315.5
+
+The parameters are:
+
+/note iiif (voice index, pitch, duration, onset time);
+
+Pitch is probably given as the semitone number, and it can be
+negative. The note duration is given in unknown units.
+
+Even less often, the composer sends a harmony key. Example:
+/key fii 1315.5 7 1
+
+Parameters:
+/key fii (time, key, mode)
+
+The key is probably again a semitone number.  The last integer, mode,
+probably differentiates between major and minor keys.
