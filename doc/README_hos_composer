@@ -1,0 +1,242 @@
+-*- org-mode -*-
+
+* Installation an first run
+HOS Composer lives in the HOS (Harmony of Spheres) Toolbox
+https://github.com/gisogrimm/hos-toolbox, main file is
+src/hos_composer.cc.
+
+It compiles without problems on Ubuntu 16.04 by invoking make in that
+project, after cloning the submodule tascar. Dependencies will pop up
+during the compilation and can be satisfied mostly with packages from
+Ubuntu repositories, except for liblsl (Lab Streaming Layer), which
+can be installed from a third-party repository or from source.
+
+Before hos_composer can be invoked, a jack server needs to be started
+with a sampling rate of 48kHz. hos_composer needs the name of a
+configuration file as a command line parameter. config/chaos.prob is a
+suitable configuration file for a first test, available in the hos
+toolbox project.
+
+While running, hos_composer sends OSC data over UDP to
+osc.udp://239.255.1.7:9877/, and it can also receive data over UDP
+(port 6978 on the Multicast IP 239.255.1.7).  It also prints
+information about the generated composition to the terminal where it
+runs.
+
+* Auralization of generated composition
+
+Not yet clear how to do this.
+
+* Internals of the composer program
+hos-composer uses the libc default random generator to create the
+composition.  To avoid generating the same composition on each program
+start, hos-composer seeds the random generator with the current time
+on program startup.
+
+After that, hos-composer intantiates an object of class composer_t,
+which registers the UDP sockets with the OS and a jack client with
+jackd, and after that reacts to events (from Jack and from UDP), until
+it is told to exit. The main thread only performs occasional checks if
+it should exit.
+
+* The composer_t class
+composer_t inherits from TASCAR::osc_server_t and jackc_db_t.
+
+** Documentation
+The following Documentation includes mostly assumptions that have not
+been verified.
+*** Parent classes and data members
+**** parent TASCAR::osc_server_t
+This is a class that allows to allocate a UDP server socket to receive
+incoming OSC messages. It also allows to register handlers for
+incoming messages.
+**** parent jackc_db_t
+This is a class that performs the registration of a client with a Jack
+server, and allows the implementation of the Jack callback functions.
+**** std::vector<voice_t> voice;
+A vector of voices.  The voice_t class is declared in file
+hos_composer_t.  It inherits from melody_model_t and adds a data
+member of type note_t. 
+
+melody_model_t is declared in file libhos_harmony.h.  It produces
+notes of a melody based on statistical models for ambitus (the range
+of note pitches in which a melody can unfold), step (pitch intervals
+from one note to the next), duration, and beat. An instance of
+harmony_model_t is required to actually generate a note in the
+voice. The harmony model imposes constraints on possible pitches. It
+may also impose constraints on the pitch combinations across different
+voices.
+
+note_t is declared in libhos_music.h.  It combines an onset time with
+a pitch and a duration.
+**** harmony_model_t harmony
+The class harmony_model_t is declared in file libhos_harmony.h.  It
+generates a harmony progression from statistical models for key
+probabilities, key changes, and at which beats a harmony change can
+occur.
+**** time_signature_t timesig
+The time signature describes the length of bars (measures) and their
+division into beats.  A waltz would have a 3/4 time signature.
+**** double time
+Not sure. Maybe this is the time of the current beat in seconds since
+the Unix Epoch.
+**** pmf_t ptimesig
+We can also have time signature changes. This model describes them.
+**** pmf_t ptimesigbars
+Something to do with the time signature changes.
+**** lo_address lo_addr
+The liblo URL where the generated notes are to be sent as OSC messages.
+**** uint32_t timesigcnt
+The number of possible time signatures. Used for time signature changes.
+**** std::vector<float> pcenter
+One entry per voice. Pitch.
+**** std::vector<float> pbandw
+One entry per voice. Default value is 48.
+**** std::vector<float> pmodf
+One entry per voice. Default value is 1.
+**** float pitchchaos
+Default value is 0.
+**** float beatchaos
+Default value is 0.
+**** float timeincrement
+Default value is 1/256.
+*** Methods
+**** Constructor
+composer_t(const std::string& srv_addr,
+           const std::string& srv_port,
+           const std::string& url,
+           const std::string& fname);
+
+The constructor initializes the osc server with the given parameters,
+and the jack client with the client name "composer".
+
+It reads the xml file with the composer's configuration, setting the
+values of the data members.
+
+It sends the receiver at the OSC target address the messages
+/clear
+/numvoices i (number of voices)
+/key fii (time, key, mode)
+
+It creates the initial time signature from the time signature model
+and sends it to the receiver as
+/timesig fii (time, numerator, denominator)
+
+Finally, some variables are registered to OSC addresses, so that they
+can be changed by OSC messages:
+ 
+    "/$(voice[k].get_name())/pitch" <- &pcenter[k]
+    "/$(voice[k].get_name())/bw"    <- &pbandw[k]
+    "/$(voice[k].get_name())/modf"  <- &pmodf[k]
+    "/pitchchaos"                   <- &pitchchaos
+    "/beatchaos"                    <- &beatchaos
+    "/timeincrement"                <- &timeincrement
+    "/abstime"                      <- &time
+    "/composer/quit"                <- &b_quit
+
+**** bool process_timesig();
+**** int32_t get_key() const;
+**** int32_t get_mode() const;
+**** void process_time();
+**** void read_xml(const std::string& fname);
+Reads an XML file containing the composer configuration using the
+XML++ librarie's DOM-like API.
+
+The root node of the XML document is forwarded to the
+harmony_model_t::read_xml function first.  
+
+Then, all "timesig" elements present in the document below the root
+element are added to the ptimesig statistical model. timesig elements
+are specified in the XML like <timesig v="3/4" p="0.3"/>, where the v
+attribute contains the numerator and denominator of the time signature
+as literal integers, separated by the slash, and p contains a
+probability as a literal double value.  The range of the p values is
+only relevant in its relation to the other p values, because the
+statistical model is normalized after reading all values.
+
+Next, all "timesigbars" elements present in the document below the
+root element are added to the the ptimesigbars statistical model.
+"timesigbars" elements have literal doubles in attributes "v" and "p".
+The meaning of "v" is unclear.
+
+Finally, all "voice" elements present in the document below the root
+element are added to the the vector voices. Each voice element needs
+to have an attribute "id", which serves as the zero-based index of
+this voice in the voices and related vectors.  Parsing of other
+attributes or sub-elements of each voice is left the the
+voice::read_xml method.
+
+**** static int osc_set_pitch(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+**** void set_pitch(double c,double w);
+**** int inner_process(jack_nframes_t n,const std::vector<float*>& inBuff,const std::vector<float*>& outBuff);
+
+* The xml format for configuring the composer
+The name and attributes of the root element are irrelevant.  Most
+relevant elements are expected as direct children of the root element,
+except for harmony, which may live at any depth below root.
+
+<harmony> has no attributes, and contains one or more child elements
+of each of: <key>, <change>, and <beat>.
+
+<key> (sub-element of <harmony>) describes a musical key, like C Major
+or a minor.  The concrete Key is given in the attribute "v".  Major keys
+use uppercase letters, minor keys use lower case letters and end in
+the trailing letter "m".  Sharp and flat modifiers b and # may be
+included to modify the key.  The modifier b for flat keys is always
+given in lowercase, also for major keys.  Examples for valid key
+attributes v: v="f#m", v="gm", v="g#m", v="C", v="Db".  The key
+elements also have an attribute "p" which contains the probability of
+that key.
+
+<change> (sub-element of <harmony>) describes probabilities of
+possible changes of musical keys from one key to another.  The key
+changes are given in the attribute "v" as an integer number (positive,
+negative, or 0) followed optionally by the string ":p".  The optional
+":p" indicates a flavor change from Major to minor or vice versa.  The
+number indicates the number of half-tone steps of change in the key.
+The change elements also have an attribute "p" which contains the
+probability of that key change.
+
+<beat> (sub-element of <harmony>) describes at which beats in a
+measure a change in harmony can occur. beat elements have attributes
+"v" and "p".  The value of the "v" attribute denotes the index
+(0-based) of the beat in the measure where key changes can occur.  "p"
+contains the probability of a key change at that beat.
+
+<timesig> elements describe possible time signatures. timesig elements
+are specified in the XML like <timesig v="3/4" p="0.3"/>, where the v
+attribute contains the numerator and denominator of the time signature
+as literal integers, separated by the slash, and p contains a
+probability as a literal double value.  The range of the p values is
+only relevant in its relation to the other p values, because the
+statistical model is normalized after reading all values.
+
+<timesigbars> elements elements have literal doubles in attributes "v"
+and "p".  The meaning of "v" is unclear.
+
+<voice> elements describe a single voice. A single voice can only
+produce one tone at a time.  Harmony is created by having multiple
+voices.  Each voice element needs to have an attribute "id", which
+serves as the zero-based index of this voice.  <voice> contains one or
+more elements of the types <step>, <notelength>, and <beat>, which
+together define the statistical model for generating melodies with
+this voice, while observing the constraints of the harmony model.
+
+<step> (sub-element of <voice>) describes the possible number of
+half-tone steps from one note to the next.  <step> has attributes "v"
+and "p".  "p" describes the probability of the <step>, while "v"
+contains the number of semitones that this step changes.  Possible
+values of "v" are integers, positive, negative or zero.
+
+<notelength> (sub-element of <voice>) describes the possible note lengths of
+half-tone steps from one note to the next.  <step> has attributes "v"
+and "p".  "p" describes the probability of the <step>, while "v"
+contains the number of semitones that this step changes.  Possible
+values of "v" are integers, positive, negative or zero.
+
+<beat> (sub-element of <voice>) describes at which beats in a measure
+a change of pitch can occur. beat elements have attributes "v" and
+"p".  The value of the "v" attribute denotes the index (0-based) of
+the beat in the measure where pitch changes can occur. Non-integer
+indices are possible.  "p" contains the probability of a pitch change
+at that beat.
