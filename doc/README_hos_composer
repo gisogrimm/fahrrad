@@ -1,12 +1,14 @@
--*- org-mode -*-
+-*- org -*- 
+#+STARTUP: showeverything
 
-* Installation an first run
+* Installation and first run
 HOS Composer lives in the HOS (Harmony of Spheres) Toolbox
 https://github.com/gisogrimm/hos-toolbox, main file is
 src/hos_composer.cc.
 
-It compiles without problems on Ubuntu 16.04 by invoking make in that
-project, after cloning the submodule tascar. Dependencies will pop up
+It compiles without problems on Ubuntu 16.04 and 17.10 by invoking
+make in that project, after cloning the submodule tascar (git
+submodule init; git submodule update).  Dependencies will pop up
 during the compilation and can be satisfied mostly with packages from
 Ubuntu repositories, except for liblsl (Lab Streaming Layer), which
 can be installed from a third-party repository or from source.
@@ -19,13 +21,35 @@ toolbox project.
 
 While running, hos_composer sends OSC data over UDP to
 osc.udp://239.255.1.7:9877/, and it can also receive data over UDP
-(port 6978 on the Multicast IP 239.255.1.7).  It also prints
-information about the generated composition to the terminal where it
-runs.
+(port 6978 on the Multicast IP 239.255.1.7).  At startup, it prints
+information about the initialization of the composer from the config
+file.  Sometimers, It also prints information about the generated
+composition to the terminal where it runs, but it is not clear under
+which circumstances this is triggered..
 
 * Auralization of generated composition
-
-Not yet clear how to do this.
+** A Jack server running at 48kHz has to be started.
+** For convenience, we need qjackctl to make Audio and Midi connections.
+** build/hos_rtm2midi translates the OSC messages into a Jack midi stream.
+After starting this program, qjackctl shows, in the Connections
+window, in the MIDI Tab, a port hos_rtm2midi:out.
+** A Live Midi to Audio converter is needed. I use zynaddsubfx.
+Install and start zynaddsubfx.  In the Audio Tab of the Qjackctl
+Connections window, connect zynaddsubfx:out_1 and zynaddsubfx:out_2 to
+the playback ports of the sytem sound card.  In the Midi Tab of the of
+the Qjackctl Connections window, zynaddsubfx generated a port
+zynaddsubfx:osc, but this is not useful for us.  Have a look at the ALSA
+Tab of the QJackctl Connections window, there is a new port named
+<Number>:ZynAddSubFX.  We need to connect this port to the hos_rtm2midi:out
+port in the MIDI Tab. To achieve this, we need a helper program:
+** start a2jmidid -e
+This program translates Jack Midi Ports to Alsa Midi Ports or vice
+versa.  When this program is started, we can connect, in the QJackCtl
+Connections window, in the MIDI Tab, the port hos_rtm2midi:out to the port
+a2j:ZynAddSubFX[<number>].
+** Now the composer can be started: build/hos_composer config/picforth.prob
+It will take a few seconds after the composer is started before the auralized
+composition can be heard.
 
 * Internals of the composer program
 hos-composer uses the libc default random generator to create the
