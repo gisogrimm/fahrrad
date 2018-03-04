@@ -28,7 +28,7 @@ composition to the terminal where it runs, but it is not clear under
 which circumstances this is triggered..
 
 * Auralization of generated composition
-** A Jack server running at 48kHz has to be started.
+** A Jack server has to be started.
 ** For convenience, we need qjackctl to make Audio and Midi connections.
 ** build/hos_rtm2midi translates the OSC messages into a Jack midi stream.
 After starting this program, qjackctl shows, in the Connections
